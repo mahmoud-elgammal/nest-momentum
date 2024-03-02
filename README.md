@@ -15,3 +15,6 @@
 - edis-powered queues for outbound emails and logs
 - Cloud agnostic, no longer specific to AWS
 - Async JSON response and smart controller injection
+
+- confirm email
+- forget password

@@ -1,31 +1,46 @@
 services:
-  web:
-    build:
-      context: web
-      dockerfile: ./Dockerfile.web
-    environment:
-      NODE_ENV: production
-    ports:
-      - 3000:80
-  server:
-    build:
-      context: api
-      dockerfile: ./Dockerfile.api
-    environment:
-      NODE_ENV: production
-    ports:
-      - 3000:3000
-    depends_on:
-      db:
+  # web:
+  #   build:
+  #     context: web
+  #     dockerfile: ./Dockerfile.web
+  #   environment:
+  #     NODE_ENV: production
+  #   ports:
+  #     - 3000:80
+  # server:
+  #   build:
+  #     context: api
+  #     dockerfile: ./Dockerfile.api
+  #   environment:
+  #     NODE_ENV: production
+  #   ports:
+  #     - 3000:3000
+  #   depends_on:
+  #     db:
 
   db:
     image: mongo:jammy
-    restart: always
+    container_name: mongodb
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: wordsmithy
     volumes:
-      - dbdata:/var/lib/postgresql/data
+      - dbdata:/data/db
+
     ports:
       - '27017:27017'
+  redis:
+    image: redis:alpine
+    container_name: redisdb
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass password
+    volumes:
+      - cache:/data
+
 volumes:
   dbdata:
-
+  cache:
 

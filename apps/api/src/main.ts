@@ -1,21 +1,45 @@
-/**
- * This is not a production server yet!
- * This is only a minimal backend to get started.
- */
-
-import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-
-import { AppModule } from './app/app.module';
+import * as cookieParser from 'cookie-parser';
+import { AppModule } from './app.module';
+import { setupSwagger } from './setup-swagger';
+import { ConfigService } from '@nestjs/config';
+import { Logger } from 'nestjs-pino';
+import { ValidationPipe } from '@nestjs/common';
+import * as passport from 'passport';
+import * as requestIp from 'request-ip';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  app.use(requestIp.mw())
+
+  app.enableCors({
+    credentials: true, // Allow credentials (cookies, HTTP authentication) to be sent cross-origin
+    origin: ['*'], // Whitelist specific origins
+    methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify the allowed HTTP methods
+    allowedHeaders: ['Content-Type', 'Authorization'], // Specify the allowed headers
+    exposedHeaders: ['Authorization'], // Specify headers exposed to the browser
+    maxAge: 3600, // Configure the maximum age (in seconds) of the preflight request
+  });
+
+  const config: ConfigService = app.get(ConfigService);
+  const logger = app.get(Logger);
+
+  app.useLogger(app.get(Logger));
+  app.use(cookieParser());
+  app.useGlobalPipes(new ValidationPipe({ transform: true }));
+  app.use(passport.initialize()); // Initialize Passport
+
   const globalPrefix = 'api';
   app.setGlobalPrefix(globalPrefix);
-  const port = process.env.PORT || 3000;
+
+  const port = config.get('PORT');
+
+  setupSwagger(app);
+
   await app.listen(port);
-  Logger.log(
-    `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`
+
+  logger.log(
+    `🚀 Application is running on: http://localhost:${port}/${globalPrefix}`,
   );
 }
 

@@ -4,6 +4,8 @@
   "description": "sync-typing app ⭐",
   "private": true,
   "scripts": {
+    "start:api": "lerna run --scope api start",
+    "build": "echo \"Hello from Build!\"",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
@@ -30,13 +32,13 @@
     "@babel/core": "^7.14.5",
     "@babel/preset-react": "^7.14.5",
     "@nestjs/schematics": "^10.0.1",
+    "@nestjs/swagger": "^7.3.0",
     "@nestjs/testing": "^10.0.2",
     "@nrwl/nest": "^18.0.6",
     "@nrwl/node": "^18.0.6",
     "@nrwl/workspace": "^18.0.6",
     "@nx-tools/nx-container": "^5.2.0",
     "@nx/cypress": "18.0.4",
-    "@nx/eslint": "18.0.6",
     "@nx/eslint-plugin": "18.0.6",
     "@nx/jest": "18.0.6",
     "@nx/js": "^18.0.6",
