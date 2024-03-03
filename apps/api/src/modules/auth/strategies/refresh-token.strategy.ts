@@ -27,7 +27,7 @@ export class RefreshTokenStrategy extends PassportStrategy(Strategy, 'refresh-to
       // If a user ID is present in the payload, validate and return the user
       const user = await this.userService.findById(payload.sub);
       if (user) {
-        return user;
+        return {...payload, user};
       }
     }
 

@@ -4,12 +4,12 @@ import { AccessToken, RefreshToken } from './token.interface.d';
  */
 export interface BaseToken {
     sub: string; // store user identifier here
-    version: number;
+    deviceId: string;
 }
 
 export interface AccessToken extends BaseToken {}
 export interface RefreshToken extends BaseToken {
-    device: string;
+    version: number;
 }
 
 export interface TokenResponse {

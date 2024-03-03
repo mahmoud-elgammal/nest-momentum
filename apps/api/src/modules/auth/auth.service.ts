@@ -3,7 +3,7 @@ import { MailService } from './../mail/mail.service';
 import { Injectable, Logger } from '@nestjs/common';
 import { TokenService } from './token.service';
 import { UserService } from './../users/users.service';
-import { TokenResponse, AccessToken } from 'src/interfaces/token.interface';
+import { TokenResponse, AccessToken, RefreshToken } from 'src/interfaces/token.interface';
 import { RegisterDTO } from './dto/register.dto';
 import { UserDocument } from '../users/models/users.model';
 
@@ -11,6 +11,8 @@ import { randomBytes } from 'crypto';
 import { VerifyEmailDTO } from './dto/verify-email.dto';
 import { UAParserInstance } from 'ua-parser-js';
 import * as geoip from 'geoip-lite';
+import { BadRequestException } from 'src/exceptions';
+import * as uuid from 'uuid';
 
 const generateVerificationCode = () => {
   return randomBytes(6).toString('hex').toUpperCase(); // Adjust the code length as needed
@@ -24,15 +26,17 @@ export class AuthService {
     private tokenService: TokenService,
     private mailService: MailService,
     private readonly redisService: RedisService,
-  ) {}
+  ) { }
   /**
    * TODO
    * forget password
    */
 
-  async register(registerDTO: RegisterDTO): Promise<TokenResponse> {
+  async register(registerDTO: RegisterDTO, ip: string, location: geoip.Lookup, ua: UAParserInstance): Promise<TokenResponse> {
     const user = await this.userService.create(registerDTO);
-    const tokens = this.tokenService.generateTokens(user);
+    const device = ua.getDevice().type || 'Desktop';
+    const deviceId = generateVerificationCode();
+    const tokens = this.tokenService.generateTokens(user, 0, deviceId, device, location?.country && `${location.country}, ${location.city}`);
     const code = generateVerificationCode();
 
     const key = `verification:${user.email}`;
@@ -66,8 +70,10 @@ export class AuthService {
     return false;
   }
 
-  login(user: UserDocument): TokenResponse {
-    const tokens = this.tokenService.generateTokens(user);
+  login(user: UserDocument, ip: string, location: geoip.Lookup, ua: UAParserInstance): TokenResponse {
+    const device = ua.getDevice().type || 'Desktop';
+    const deviceId = generateVerificationCode();
+    const tokens = this.tokenService.generateTokens(user, 0, deviceId, device, location?.country && `${location.country}, ${location.city}`);
     //  if (!user.emails.find((i) => i.emailSafe === emailSafe)?.isVerified)
     //   throw new UnauthorizedException(UNVERIFIED_EMAIL);
     return tokens;
@@ -127,9 +133,25 @@ export class AuthService {
     }
   }
 
-  refreshToken(user: UserDocument): TokenResponse {
-    const tokens = this.tokenService.generateTokens(user);
+  async refreshToken(
+    user: UserDocument,
+    oldToken: RefreshToken,
+    ip: string,
+    location: geoip.Lookup,
+    ua: UAParserInstance,
+  ): Promise<TokenResponse> {
+    const device = ua.getDevice().type || 'Desktop';
+
+    const session = await this.tokenService.getSession(user._id, oldToken.deviceId);
+    this.logger.log(session);
+    if (!session) throw new BadRequestException()
+
+    const tokens = this.tokenService.generateTokens(user, ++oldToken.version, oldToken.deviceId, device, location?.country && `${location.country}, ${location.city}`);
     return tokens;
+  }
+
+  async logout(session) {
+    return await this.tokenService.deleteSession(session.user._id, session.deviceId)
   }
 
   current(payload: AccessToken) {
@@ -145,5 +167,10 @@ export class AuthService {
   async cleanupResetPasswordCode(user): Promise<void> {
     const key = `password-reset:${user._id}`;
     await this.redisService.delete(key);
+  }
+
+  async getSessions(user: any) {
+    const sessions = await this.tokenService.getSessions(user._id, user.deviceId);
+    return sessions
   }
 }

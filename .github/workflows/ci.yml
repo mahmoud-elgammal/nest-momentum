@@ -23,5 +23,5 @@ jobs:
         with:
           node-version: 20
           cache: 'npm'
-      - run: yarb
+      - run: npm
       - run: npm ci

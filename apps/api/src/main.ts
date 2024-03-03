@@ -14,14 +14,12 @@ async function bootstrap() {
 
   app.enableCors({
     credentials: true, // Allow credentials (cookies, HTTP authentication) to be sent cross-origin
-    origin: ['*'], // Whitelist specific origins
+    origin: 'http://localhost:3000', // Whitelist specific origins
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Specify the allowed HTTP methods
-    allowedHeaders: ['Content-Type', 'Authorization'], // Specify the allowed headers
-    exposedHeaders: ['Authorization'], // Specify headers exposed to the browser
     maxAge: 3600, // Configure the maximum age (in seconds) of the preflight request
   });
 
-  const config: ConfigService = app.get(ConfigService);
+  const config: ConfigService = app.get(ConfigService); // install helmet
   const logger = app.get(Logger);
 
   app.useLogger(app.get(Logger));

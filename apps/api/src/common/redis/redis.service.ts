@@ -9,7 +9,7 @@ export class RedisService {
     private readonly logger = new Logger(RedisService.name);
 
     constructor(
-       private readonly configService: ConfigService,
+        private readonly configService: ConfigService,
     ) {
         // make wne init module
         this.client = new Redis({
@@ -35,13 +35,43 @@ export class RedisService {
     }
 
     async set(key: string, value: string, expire?: string): Promise<void> {
-    
-        if(!expire) {
+
+        if (!expire) {
             this.client.set(key, value);
             return;
         }
 
         await this.client.setex(key, duration(expire), value);
+    }
+
+    async hset(key: string, value: object, expire?: string): Promise<void> {
+        await this.client.hset(key, value);
+
+        if (!expire) {
+            this.client.expire(key, duration(expire))
+            return;
+        }
+    }
+
+    async scan(pattern: string) {
+        const keys = [];
+        let cursor = '0';
+
+        do {
+            const result = await this.client.scan(cursor, 'MATCH', pattern);
+            cursor = result[0];
+            keys.push(...result[1]);
+        } while (cursor !== '0');
+
+        return keys;
+    }
+
+    async hget(key): Promise<object | null> {
+        return this.client.hgetall(key);
+    }
+
+    async hdel(key) {
+     await  this.client.del(key)
     }
 
     async increment(key: string): Promise<number> {

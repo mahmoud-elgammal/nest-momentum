@@ -21,7 +21,8 @@ export class AccessTokenStrategy extends PassportStrategy(Strategy, 'access_toke
   }
 
   async validate(payload: AccessToken) {
-    const user = await this.userService.findById(payload.sub);
+    const user: any = await this.userService.findById(payload.sub);
+    user.deviceId = payload.deviceId;
     return user;
   }
 }

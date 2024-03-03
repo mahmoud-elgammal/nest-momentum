@@ -18,8 +18,10 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('register')
-  async register(@Body() registerDTO: RegisterDTO, @Res() res: Response) {
-    const tokens = await this.authService.register(registerDTO);
+  async register(@Body() registerDTO: RegisterDTO, @Res() res: Response, @IpAddress() ip: string, @Headers('User-Agent') ua: string) {
+    const uaParsed = new UAParser(ua);
+    const location = geoip.lookup(ip);
+    const tokens = await this.authService.register(registerDTO, ip, location, uaParsed);
     try {
      await res.cookie('access_token', tokens.accessToken, {
         expires: new Date(Date.now() + 30 * 24 * 3600000),
@@ -44,8 +46,12 @@ export class AuthController {
 
   @Post('login')
   @UseLocalAuthGuard()
-  async login(@Req() req: Request, @Res() res: Response) {
-    const tokens = await this.authService.login(req.user);;
+  async login(@Req() req: Request, @Res() res: Response, @IpAddress() ip: string, @Headers('User-Agent') ua: string) {
+    const uaParsed = new UAParser(ua);
+    const location = geoip.lookup(ip);
+
+    const tokens = await this.authService.login(req.user, ip, location, uaParsed);
+
     try {
      await res.cookie('access_token', tokens.accessToken, {
         expires: new Date(Date.now() + 30 * 24 * 3600000),
@@ -60,6 +66,7 @@ export class AuthController {
         secure: true,
         sameSite: 'strict',
       });
+
        res.status(200).json({ status: 'ok', msg: 'USER_LOGIN_SUCCESSFULLY' });
     } catch (err) {
         this.logger.warn(err);
@@ -69,8 +76,11 @@ export class AuthController {
 
   @Get('refresh')
   @UseRefreshTokenGuard()
-  async generateToken(@Req() req: Request, @Res() res: Response) {
-    const tokens = await this.authService.refreshToken(req.user);
+  async generateToken(@Req() req: any, @Res() res: Response, @IpAddress() ip: string, @Headers('User-Agent') ua: string) {
+    const uaParsed = new UAParser(ua);
+    const location = geoip.lookup(ip);
+
+    const tokens = await this.authService.refreshToken(req.user.user, req.user, ip, location, uaParsed);
 
      await res.cookie('access_token', tokens.accessToken, {
         expires: new Date(Date.now() + 30 * 24 * 3600000),
@@ -108,5 +118,31 @@ export class AuthController {
     const uaParsed = new UAParser(ua);
     const location = geoip.lookup(ip);
     return this.authService.forgetPassword(forgetPasswordDTO.email, ip, location, uaParsed);
+  }
+
+  @Get('logout')
+  @UseRefreshTokenGuard()
+  async logout(@Req() req: any,@Res() res: Response) {
+     await res.clearCookie('access_token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+      });
+
+      await res.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'strict',
+      });
+
+    await this.authService.logout(req.user);
+
+    res.json({ok: true, message: 'Session has deleted'})
+  }
+
+  @Get('sessions')
+  @UseAccessTokenGuard()
+  async getSessions(@Req() req: Request) {
+    return await this.authService.getSessions(req.user);
   }
 }
